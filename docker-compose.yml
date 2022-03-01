@@ -1,0 +1,78 @@
+version: '3'
+
+networks:
+  n-complex:
+    driver: bridge
+
+volumes:
+  v-complex:
+    driver_opts:
+      device: ${PWD}
+      type: bind
+      o: bind
+
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_PORT=5432
+    ports:
+      - '5432:5432'
+    networks:
+      - n-complex
+  redis:
+    image: 'redis:latest'
+    networks:
+      - n-complex
+  nginx:
+    restart: always
+    build:
+      dockerfile: Dockerfile
+      context: ./nginx
+    ports:
+      - '3050:80'
+    networks:
+      - n-complex
+  api:
+    build:
+      dockerfile: Dockerfile
+      context: ./server
+    volumes:
+      - /app/node_modules
+      - ./server:/app
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - POSTGRES_USER=postgres
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=postgres_password
+      - POSTGRES_PORT=5432
+#      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - '3005:5000'
+    networks:
+      - n-complex
+  client:
+    build:
+      dockerfile: Dockerfile
+      context: ./client
+    volumes:
+      - /app/node_modules
+      - ./client:/app
+    ports:
+      - '3000:3000'
+    networks:
+      - n-complex
+  worker:
+    build:
+      dockerfile: Dockerfile
+      context: ./worker
+    volumes:
+      - /app/node_modules
+      - ./worker:/app
+    networks:
+      - n-complex
